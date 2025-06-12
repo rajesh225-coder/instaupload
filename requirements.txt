@@ -1,1 +1,6 @@
-
+cloudinary
+requests
+Pillow
+numpy
+moviepy==1.0.3
+imageio==2.27.0
