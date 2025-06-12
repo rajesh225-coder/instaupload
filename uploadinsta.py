@@ -1,3 +1,5 @@
+# Yeh GitHub ke liye final, corrected code hai
+
 import os
 import cloudinary
 import cloudinary.api
@@ -10,16 +12,16 @@ import numpy as np
 from moviepy.editor import ImageClip, VideoFileClip, ColorClip, CompositeVideoClip
 import traceback
 
-# --- CONFIGURATION (Apni details yahan daalein) ---
-CLOUDINARY_CLOUD_NAME = "decqrz2gm"
-CLOUDINARY_API_KEY = "288795273313996"
-CLOUDINARY_API_SECRET = "Q2anv-1fJKaF6zMSyfhzVEz-kWc"
+# --- CONFIGURATION (Yeh ab GitHub Secrets se aayega) ---
+CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
+CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY")
+CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET")
 
-INSTAGRAM_USER_ID = "17841470212310237"
-ACCESS_TOKEN = "EAAIOK87vxkgBO5SZAT8O3F6rzb23wNBgZBSVZCHJOQApd5KZAaA2gAXjjAFCMvZC4TkRK4ad0UVQoQw36vtgVQ3b6l3SYDbAsXVTudxbzTQ774tvvvWZCOmMbmZAFgABhpt35ziE6lHeuB5sf5jV3XqHiEBeZCJpNORjXs5olccpStZAshIa6WZBzVFpTzEzHvVKkV14sohkEZAuglr5TFY"
+INSTAGRAM_USER_ID = os.getenv("INSTAGRAM_USER_ID")
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 
-# Ek text file ka path jahan script yaad rakhegi ki last konsa part upload hua tha
-LAST_UPLOADED_FILE = r"C:\Users\ADMIN\Desktop\WHATSAPP\movie\last_uploaded.txt"
+# File ka path ab relative hoga, absolute (C:\...) nahi
+LAST_UPLOADED_FILE = "last_uploaded.txt"
 # --- END OF CONFIGURATION ---
 
 # Cloudinary ko configure karein
@@ -29,7 +31,6 @@ cloudinary.config(
     api_secret=CLOUDINARY_API_SECRET,
     secure=True
 )
-
 
 def download_video(url, output_path):
     """Video ko URL se download karne ke liye function."""
@@ -46,7 +47,6 @@ def download_video(url, output_path):
         print(f"Error downloading video: {e}")
         return False
 
-
 def edit_video(input_path, output_path, video_title):
     """
     Video ko mobile format (1080x1920) mein edit karta hai.
@@ -56,20 +56,19 @@ def edit_video(input_path, output_path, video_title):
         print(f"Editing video with title: '{video_title}'")
         mobile_width, mobile_height = 1080, 1920
 
-        # Font load karne ki koshish karein
+        # Font ka path ab relative hai, C:\... nahi
         try:
-            font_path = r"C:\Users\ADMIN\Desktop\WHATSAPP\movie\nunitomedium.ttf"
+            font_path = "nunitomedium.ttf" 
             title_font = ImageFont.truetype(font_path, 80)
             bottom_font = ImageFont.truetype(font_path, 55)
-            print(f"Successfully loaded font from: {font_path}")
+            print(f"Successfully loaded font: {font_path}")
         except IOError:
-            print(f"ERROR: Font file not found at '{font_path}'. Please check the path.")
+            print(f"ERROR: Font file '{font_path}' not found in the repository.")
             print("Using tiny default font instead.")
             title_font = ImageFont.load_default()
             bottom_font = ImageFont.load_default()
 
         with VideoFileClip(input_path) as clip:
-            # Title banayein
             img = Image.new('RGB', (mobile_width, 150), color=(255, 255, 255))
             draw = ImageDraw.Draw(img)
             bbox = draw.textbbox((0, 0), video_title, font=title_font)
@@ -130,7 +129,6 @@ def edit_video(input_path, output_path, video_title):
         traceback.print_exc()
         return False
 
-
 def get_next_part_video_url():
     """Cloudinary se agla video dhoondhta hai jise process karna hai."""
     print("Step 1: Finding the next video to process...")
@@ -142,23 +140,23 @@ def get_next_part_video_url():
         except (IOError, ValueError):
             print(f"Warning: Could not read '{LAST_UPLOADED_FILE}'. Starting from part 1.")
             last_part = 0
-
     next_part = last_part + 1
-    
     while True:
         next_part_str = f"part_{next_part}"
         print(f"Searching for '{next_part_str}'...")
+        # Search is case-insensitive, but we will use "Part_" for consistency with user's naming
+        edited_prefix = f"edited_videos/Part_{next_part}"
+        original_prefix = f"my_videos/Part_{next_part}"
 
         edited_resources = cloudinary.api.resources(
-            type="upload", resource_type="video", prefix=f"edited_videos/Part_{next_part}", max_results=1
+            type="upload", resource_type="video", prefix=edited_prefix, max_results=1
         )
         if 'resources' in edited_resources and len(edited_resources['resources']) > 0:
             print(f"'{next_part_str}' has already been edited. Checking next part.")
             next_part += 1
             continue
-
         resources = cloudinary.api.resources(
-            type="upload", resource_type="video", prefix=f"my_videos/Part_{next_part}", max_results=1
+            type="upload", resource_type="video", prefix=original_prefix, max_results=1
         )
         if 'resources' in resources and len(resources['resources']) > 0:
             res = resources['resources'][0]
@@ -172,7 +170,6 @@ def get_next_part_video_url():
             if next_part > last_part + 50: # Ek limit taaki anant loop na chale
                 print("Searched for 50 parts and found nothing. Stopping.")
                 return None, None, None
-
 
 def post_to_instagram(video_url, caption):
     """Edited video ko Instagram par as a Reel post karta hai."""
@@ -189,7 +186,6 @@ def post_to_instagram(video_url, caption):
         resp.raise_for_status()
         container_id = resp.json()["id"]
         print(f"Media container created: {container_id}")
-
         status_url = f"https://graph.facebook.com/v17.0/{container_id}?fields=status_code&access_token={ACCESS_TOKEN}"
         for i in range(20):
             status_resp = requests.get(status_url, timeout=30)
@@ -205,37 +201,29 @@ def post_to_instagram(video_url, caption):
         else:
             print("Media processing timed out after 100 seconds.")
             return False
-
         publish_url = f"https://graph.facebook.com/v17.0/{INSTAGRAM_USER_ID}/media_publish"
         payload = {"creation_id": container_id, "access_token": ACCESS_TOKEN}
         resp = requests.post(publish_url, data=payload, timeout=60)
         resp.raise_for_status()
         print("Successfully posted to Instagram!", resp.json())
         return True
-
     except requests.exceptions.RequestException as e:
         print(f"An error occurred while posting to Instagram: {e}")
         if 'response' in locals() and hasattr(locals()['response'], 'text'):
             print("API Response:", locals()['response'].text)
         return False
 
-
 if __name__ == "__main__":
     video_url, part_number, public_id = get_next_part_video_url()
-
     if video_url:
         with tempfile.TemporaryDirectory() as tmpdir:
             input_path = os.path.join(tmpdir, "input_video.mp4")
             output_path = os.path.join(tmpdir, "output_video.mp4")
-
             video_title_from_id = os.path.basename(public_id).replace("_", " ").replace("-", " ").capitalize()
-
             if not download_video(video_url, input_path):
                 exit() 
-
             if not edit_video(input_path, output_path, video_title_from_id):
                  exit() 
-
             try:
                 print("Uploading edited video to Cloudinary...")
                 cloudinary_public_id = os.path.basename(public_id) 
@@ -247,7 +235,6 @@ if __name__ == "__main__":
                 )
                 edited_video_url = uploaded["secure_url"]
                 print(f"Edited video uploaded: {edited_video_url}")
-
                 caption = f"""🔥 This movie scene will blow your mind! 😱 ({video_title_from_id})
 
 🎬 #ViralClip | 💥 #BlockbusterMoment | ❤️ #MustWatch
@@ -256,14 +243,11 @@ if __name__ == "__main__":
 📌 Full movie link in bio!
 
 #ShortFilm #MovieMagic #TrendingNow #Cinematic #InstaReels #FilmScene"""
-                
                 post_success = post_to_instagram(edited_video_url, caption)
-
                 if post_success:
                     with open(LAST_UPLOADED_FILE, "w") as f:
                         f.write(str(part_number))
                     print(f"Successfully processed and uploaded Part {part_number}. Progress saved.")
-
             except Exception as e:
                 print(f"An error occurred during upload or posting: {e}")
                 traceback.print_exc()
