@@ -27,7 +27,6 @@ on:
   # Workflow ko manually chalaane ke liye
   workflow_dispatch:
 
-# === YEH BLOCK ZAROORI HAI ===
 # Yeh action ko repository mein likhne (write) ki permission deta hai
 permissions:
   contents: write
@@ -41,11 +40,13 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      # Step 2: Python ka environment set up karega
+      # Step 2: Python ka environment set up karega (Caching ke saath)
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+          cache: 'pip' # pip se install hui libraries ko cache karega
+          cache-dependency-path: 'requirements.txt' # Is file ke badalne par hi cache update hoga
 
       # Step 3: FFMPEG install karega (moviepy ke liye zaroori hai)
       - name: Install ffmpeg
