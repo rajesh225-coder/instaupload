@@ -1,5 +1,1 @@
-cloudinary
-requests
-Pillow
-numpy
-moviepy
+
