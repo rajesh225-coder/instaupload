@@ -13,15 +13,19 @@ from moviepy.editor import ImageClip, VideoFileClip, ColorClip, CompositeVideoCl
 import traceback
 
 # --- CONFIGURATION (Yeh ab GitHub Secrets se aayega) ---
-CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
-CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY")
-CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET")
+CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "decqrz2gm")
+CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "288795273313996")
+CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "Q2anv-1fJKaF6zMSyfhzVEz-kWc")
 
-INSTAGRAM_USER_ID = os.getenv("INSTAGRAM_USER_ID")
-ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
+INSTAGRAM_USER_ID = os.getenv("INSTAGRAM_USER_ID", "17841470212310237")
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN", "EAAIOK87vxkgBO5SZAT8O3F6rzb23wNBgZBSVZCHJOQApd5KZAaA2gAXjjAFCMvZC4TkRK4ad0UVQoQw36vtgVQ3b6l3SYDbAsXVTudxbzTQ774tvvvWZCOmMbmZAFgABhpt35ziE6lHeuB5sf5jV3XqHiEBeZCJpNORjXs5olccpStZAshIa6WZBzVFpTzEzHvVKkV14sohkEZAuglr5TFY")
 
 # File ka path ab relative hoga, absolute (C:\...) nahi
-LAST_UPLOADED_FILE = "last_uploaded.txt"
+# Agar GitHub par chal raha hai to relative, varna local PC ka path
+if os.getenv("GITHUB_ACTIONS"):
+    LAST_UPLOADED_FILE = "last_uploaded.txt"
+else:
+    LAST_UPLOADED_FILE = r"C:\Users\ADMIN\Desktop\WHATSAPP\movie\last_uploaded.txt"
 # --- END OF CONFIGURATION ---
 
 # Cloudinary ko configure karein
@@ -58,21 +62,28 @@ def edit_video(input_path, output_path, video_title):
 
         # Font ka path ab relative hai, C:\... nahi
         try:
-            font_path = "nunitomedium.ttf" 
+            # Agar GitHub par chal raha hai to relative path, varna local PC ka path
+            if os.getenv("GITHUB_ACTIONS"):
+                font_path = "nunitomedium.ttf"
+            else:
+                font_path = r"C:\Users\ADMIN\Desktop\WHATSAPP\movie\nunitomedium.ttf"
+            
             title_font = ImageFont.truetype(font_path, 80)
             bottom_font = ImageFont.truetype(font_path, 55)
             print(f"Successfully loaded font: {font_path}")
         except IOError:
-            print(f"ERROR: Font file '{font_path}' not found in the repository.")
+            print(f"ERROR: Font file '{font_path}' not found.")
             print("Using tiny default font instead.")
             title_font = ImageFont.load_default()
             bottom_font = ImageFont.load_default()
 
         with VideoFileClip(input_path) as clip:
-            img = Image.new('RGB', (mobile_width, 150), color=(255, 255, 255))
+            # === BADLAV 1: Background aur Text ka color badla gaya ===
+            # Title banayein (Black background, White text)
+            img = Image.new('RGB', (mobile_width, 150), color=(0, 0, 0)) # Black background
             draw = ImageDraw.Draw(img)
             bbox = draw.textbbox((0, 0), video_title, font=title_font)
-            draw.text(((mobile_width - (bbox[2] - bbox[0])) / 2, (150 - (bbox[3] - bbox[1])) / 2), video_title, fill="black", font=title_font)
+            draw.text(((mobile_width - (bbox[2] - bbox[0])) / 2, (150 - (bbox[3] - bbox[1])) / 2), video_title, fill="white", font=title_font) # White text
             title_clip = ImageClip(np.array(img)).set_duration(clip.duration)
             
             w, h = clip.size
@@ -80,12 +91,17 @@ def edit_video(input_path, output_path, video_title):
             cropped_clip = clip.crop(x1=crop_x, x2=w - crop_x)
             scale = min(mobile_width / cropped_clip.w, mobile_height / cropped_clip.h)
             clip_resized = cropped_clip.resize(scale)
-            background = ColorClip(size=(mobile_width, mobile_height), color=(255, 255, 255), duration=clip.duration)
+            
+            # Poori video ka background black kar diya
+            background = ColorClip(size=(mobile_width, mobile_height), color=(0, 0, 0), duration=clip.duration) # Black background
+            
             video_center_y = (mobile_height - clip_resized.h) // 2
             title_clip = title_clip.set_position(("center", video_center_y - 120))
             video_bottom_y = video_center_y + clip_resized.h
+            
+            # Bottom text (Black background, White text)
             bottom_text = "The next part will be out within 2 hours (keep watching)"
-            bottom_img = Image.new('RGB', (mobile_width - 200, 160), color=(255, 255, 255))
+            bottom_img = Image.new('RGB', (mobile_width - 200, 160), color=(0, 0, 0)) # Black background
             bottom_draw = ImageDraw.Draw(bottom_img)
             lines = []
             words = bottom_text.split()
@@ -103,10 +119,11 @@ def edit_video(input_path, output_path, video_title):
             for line in lines:
                 bbox = bottom_draw.textbbox((0, 0), line, font=bottom_font)
                 bw, bh = bbox[2] - bbox[0], bbox[3] - bbox[1]
-                bottom_draw.text(((bottom_img.width - bw) / 2, current_y), line, fill="black", font=bottom_font)
+                bottom_draw.text(((bottom_img.width - bw) / 2, current_y), line, fill="white", font=bottom_font) # White text
                 current_y += bh
             bottom_clip = ImageClip(np.array(bottom_img)).set_duration(clip.duration)
             bottom_clip = bottom_clip.set_position(("center", video_bottom_y + 10))
+            
             final_clip = CompositeVideoClip(
                 [background, clip_resized.set_position("center"), title_clip, bottom_clip],
                 size=(mobile_width, mobile_height)
@@ -144,7 +161,6 @@ def get_next_part_video_url():
     while True:
         next_part_str = f"part_{next_part}"
         print(f"Searching for '{next_part_str}'...")
-        # Search is case-insensitive, but we will use "Part_" for consistency with user's naming
         edited_prefix = f"edited_videos/Part_{next_part}"
         original_prefix = f"my_videos/Part_{next_part}"
 
@@ -167,7 +183,7 @@ def get_next_part_video_url():
         else:
             print(f"No video found for 'Part_{next_part}' in 'my_videos/'. Trying next part.")
             next_part += 1
-            if next_part > last_part + 50: # Ek limit taaki anant loop na chale
+            if next_part > last_part + 50:
                 print("Searched for 50 parts and found nothing. Stopping.")
                 return None, None, None
 
@@ -177,10 +193,7 @@ def post_to_instagram(video_url, caption):
     try:
         create_url = f"https://graph.facebook.com/v17.0/{INSTAGRAM_USER_ID}/media"
         payload = {
-            "video_url": video_url,
-            "caption": caption,
-            "media_type": "REELS",
-            "access_token": ACCESS_TOKEN
+            "video_url": video_url, "caption": caption, "media_type": "REELS", "access_token": ACCESS_TOKEN
         }
         resp = requests.post(create_url, data=payload, timeout=60)
         resp.raise_for_status()
@@ -192,8 +205,7 @@ def post_to_instagram(video_url, caption):
             status_resp.raise_for_status()
             status = status_resp.json()["status_code"]
             print(f"Media status check ({i+1}/20): {status}")
-            if status == "FINISHED":
-                break
+            if status == "FINISHED": break
             if status == "ERROR":
                 print("Media processing failed with ERROR status.")
                 return False
@@ -220,21 +232,19 @@ if __name__ == "__main__":
             input_path = os.path.join(tmpdir, "input_video.mp4")
             output_path = os.path.join(tmpdir, "output_video.mp4")
             video_title_from_id = os.path.basename(public_id).replace("_", " ").replace("-", " ").capitalize()
-            if not download_video(video_url, input_path):
-                exit() 
-            if not edit_video(input_path, output_path, video_title_from_id):
-                 exit() 
+            
+            if not download_video(video_url, input_path): exit() 
+            if not edit_video(input_path, output_path, video_title_from_id): exit() 
+            
             try:
                 print("Uploading edited video to Cloudinary...")
                 cloudinary_public_id = os.path.basename(public_id) 
                 uploaded = cloudinary.uploader.upload_large(
-                    output_path,
-                    resource_type="video",
-                    folder="edited_videos/",
-                    public_id=cloudinary_public_id
+                    output_path, resource_type="video", folder="edited_videos/", public_id=cloudinary_public_id
                 )
                 edited_video_url = uploaded["secure_url"]
                 print(f"Edited video uploaded: {edited_video_url}")
+                
                 caption = f"""🔥 This movie scene will blow your mind! 😱 ({video_title_from_id})
 
 🎬 #ViralClip | 💥 #BlockbusterMoment | ❤️ #MustWatch
@@ -243,7 +253,10 @@ if __name__ == "__main__":
 📌 Full movie link in bio!
 
 #ShortFilm #MovieMagic #TrendingNow #Cinematic #InstaReels #FilmScene"""
-                # post_success = post_to_instagram(edited_video_url, caption)
+                
+                # Yeh line uncomment karein jab aap asli mein post karna chahte hain
+                post_success = post_to_instagram(edited_video_url, caption)
+                
                 if post_success:
                     with open(LAST_UPLOADED_FILE, "w") as f:
                         f.write(str(part_number))
