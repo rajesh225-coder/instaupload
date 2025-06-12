@@ -1,33 +1,20 @@
 name: Auto Post Reels on Schedule (IST)
 
 on:
-  # Agar aap chahein to testing ke liye isse on rakh sakte hain.
-  # Code mein badlav karke push karne par yeh apne aap chalega.
   push:
     branches:
       - main
   
-  # Yeh action ko schedule par chalayega
   schedule:
-    # Zaroori Note: GitHub ka time UTC mein hota hai. IST, UTC se 5 ghante 30 minute aage hai.
-    # Isliye hum time ko UTC mein convert karke likhenge.
-
-    # Subha 9:00 AM IST (hota hai 3:30 UTC)
-    - cron: '30 3 * * *'
+    # Schedule (Indian Time)
+    - cron: '30 3 * * *'  # Subha 9:00 AM IST
+    - cron: '30 7 * * *'  # Dopehar 1:00 PM IST
+    - cron: '30 12 * * *' # Shaam 6:00 PM IST
+    - cron: '30 15 * * *' # Raat 9:00 PM IST
     
-    # Dopehar 1:00 PM IST (hota hai 7:30 UTC)
-    - cron: '30 7 * * *'
-    
-    # Shaam 6:00 PM IST (hota hai 12:30 UTC)
-    - cron: '30 12 * * *'
-    
-    # Raat 9:00 PM IST (hota hai 15:30 UTC)
-    - cron: '30 15 * * *'
-    
-  # Workflow ko manually chalaane ke liye
   workflow_dispatch:
 
-# Yeh action ko repository mein likhne (write) ki permission deta hai
+# Action ko repository mein likhne (write) ki permission deta hai
 permissions:
   contents: write
 
@@ -36,27 +23,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Code ko runner machine par download karega
       - name: Check out repository
         uses: actions/checkout@v4
 
-      # Step 2: Python ka environment set up karega (Caching ke saath)
-      - name: Set up Python
+      - name: Set up Python with dependency caching
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-          cache: 'pip' # pip se install hui libraries ko cache karega
-          cache-dependency-path: 'requirements.txt' # Is file ke badalne par hi cache update hoga
+          cache: 'pip'
+          cache-dependency-path: 'requirements.txt'
 
-      # Step 3: FFMPEG install karega (moviepy ke liye zaroori hai)
-      - name: Install ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-
-      # Step 4: Python ki zaroori libraries install karega
       - name: Install dependencies from requirements.txt
         run: pip install -r requirements.txt
       
-      # Step 5: Python script ko chalayega
       - name: Run Python script
         env:
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
@@ -66,12 +45,12 @@ jobs:
           ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: python auto_poster.py
         
-      # Step 6: last_uploaded.txt file mein hue badlav ko wapas repository mein save karega
       - name: Commit and push if changed
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
-          git add last_uploaded.txt
-          # Sirf tabhi commit karega jab file mein koi badlav hua ho
-          git diff --staged --quiet || git commit -m "Update last uploaded part number"
+          # === YAHAN FIX KIYA GAYA HAI ===
+          # Filename ko 'last_uploaded.txt' se 'posted_parts.txt' kar diya hai
+          git add posted_parts.txt
+          git diff --staged --quiet || git commit -m "Update posted parts list"
           git push
