@@ -1,10 +1,36 @@
 name: Auto Post Reels on Schedule (IST)
 
 on:
+  # Agar aap chahein to testing ke liye isse on rakh sakte hain.
+  # Code mein badlav karke push karne par yeh apne aap chalega.
   push:
     branches:
       - main
-  workflow_dispatch: # Isse aap manually run kar payenge
+  
+  # Yeh action ko schedule par chalayega
+  schedule:
+    # Zaroori Note: GitHub ka time UTC mein hota hai. IST, UTC se 5 ghante 30 minute aage hai.
+    # Isliye hum time ko UTC mein convert karke likhenge.
+
+    # Subha 9:00 AM IST (hota hai 3:30 UTC)
+    - cron: '30 3 * * *'
+    
+    # Dopehar 1:00 PM IST (hota hai 7:30 UTC)
+    - cron: '30 7 * * *'
+    
+    # Shaam 6:00 PM IST (hota hai 12:30 UTC)
+    - cron: '30 12 * * *'
+    
+    # Raat 9:00 PM IST (hota hai 15:30 UTC)
+    - cron: '30 15 * * *'
+    
+  # Workflow ko manually chalaane ke liye
+  workflow_dispatch:
+
+# === YEH BLOCK ZAROORI HAI ===
+# Yeh action ko repository mein likhne (write) ki permission deta hai
+permissions:
+  contents: write
 
 jobs:
   build-and-run:
@@ -25,20 +51,10 @@ jobs:
       - name: Install ffmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      # === DEBUGGING STEP 1 ===
-      # Hum check kar rahe hain ki saari files sahi jagah par hain ya nahi
-      - name: List files in the repository
-        run: ls -R
-
       # Step 4: Python ki zaroori libraries install karega
       - name: Install dependencies from requirements.txt
         run: pip install -r requirements.txt
       
-      # === DEBUGGING STEP 2 ===
-      # Hum check kar rahe hain ki moviepy install hui ya nahi
-      - name: List installed Python packages
-        run: pip freeze
-
       # Step 5: Python script ko chalayega
       - name: Run Python script
         env:
