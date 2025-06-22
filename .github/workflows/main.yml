@@ -7,10 +7,9 @@ on:
   
   schedule:
     # Schedule (Indian Time)
-    - cron: '30 3 * * *'  # Subha 9:00 AM IST
-    - cron: '30 7 * * *'  # Dopehar 1:00 PM IST
+
     - cron: '30 12 * * *' # Shaam 6:00 PM IST
-    - cron: '30 15 * * *' # Raat 9:00 PM IST
+ 
     
   workflow_dispatch:
 
